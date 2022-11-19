@@ -1,0 +1,64 @@
+
+- hosts: web_servers
+  become: true
+  pre_tasks:
+
+  - name: Install Updates (Ubuntu)
+    apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: dpkg for Ubuntu
+    shell:
+      dpkg --configure -a
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install Docker (Ubuntu)
+    apt:
+      name: docker
+      state: latest
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install SDK (Ubuntu)
+    shell:
+      pip install docker-py
+
+  - name: Adding group to Docker
+    shell:
+      usermod -aG docker rouj
+
+  - name: Enable/Restart Docker (Ubuntu)
+    service:
+      name: docker
+      state: started
+      enabled: true
+
+  - name: Creating Directory for Dockerfile
+    file:
+      path:  ./root/demo-dockerfile
+      state: directory
+      owner: root
+      group: root
+      mode:  '0755'
+
+  - name: Importing of Dockerfile
+    copy:
+      src:  ./Dockerfile
+      dest: ./root/demo-dockerfile/Dockerfile
+      owner: root
+      group: root
+      mode:  '0755'
+
+  - name: Dockerfile Configuration
+    docker_image:
+      name: activity11
+      build:
+        path: ./root/demo-dockerfile
+        args:
+          listen_port: 8080
+      state: present
+
+  - name: Accessing the Container
+    shell:
+      docker run -it -d -p 8080:80 activity11
